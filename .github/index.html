@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BRANDED — Parallax Capsule</title>
+  <meta name="description" content="Интерактивный параллакс-лендинг брендированной одежды — GSAP, Lenis, simpleParallax, theme toggle, magnetic buttons." />
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,500&display=swap" rel="stylesheet">
+
+  <style>
+  /* =========================
+     THEMES (CSS-переменные)
+     ========================= */
+  :root{
+    /* dark default colors (subject to override by [data-theme="light"]) */
+    --bg: #070707;
+    --panel: rgba(255,255,255,0.03);
+    --fg: #f6f6f6;
+    --muted: #a8a8a8;
+    --accent: #ffffff;
+    --accent-2: #c9f31d;
+    --gold: #c49c47;
+    --glass: rgba(255,255,255,0.04);
+    --card-bg: rgba(255,255,255,0.04);
+    --stroke: rgba(255,255,255,0.08);
+    --shadow: 0 12px 30px rgba(0,0,0,0.6);
+
+    --pad: clamp(14px, 2.6vw, 38px);
+    --maxw: 1400px;
+  }
+
+  /* light theme */
+  html[data-theme="light"]{
+    --bg: linear-gradient(180deg, #fff 0%, #fbfbfb 100%);
+    --panel: rgba(0,0,0,0.02);
+    --fg: #0a0a0a;
+    --muted: #666666;
+    --accent: #0a0a0a;
+    --accent-2: #c49c47;
+    --gold: #c49c47;
+    --glass: rgba(10,10,10,0.04);
+    --card-bg: rgba(255,255,255,0.9);
+    --stroke: rgba(10,10,10,0.06);
+    --shadow: 0 18px 40px rgba(20,20,20,0.06);
+  }
+
+  /* =========================
+     Base / Layout
+     ========================= */
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: Inter, Montserrat, "Playfair Display", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: var(--bg);
+    color: var(--fg);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    overflow-x:hidden;
+  }
+  a{color:inherit;text-decoration:none}
+  main{position:relative;z-index:1}
+
+  /* NAV & THEME TOGGLE */
+  .topbar{
+    position:fixed; inset:0 0 auto 0; display:flex; justify-content:space-between; align-items:center;
+    padding: 12px var(--pad);
+    pointer-events:none; z-index:1200;
+  }
+  .topbar__inner{
+    width:100%; max-width:var(--maxw); margin:0 auto; display:flex; justify-content:space-between; gap:12px; align-items:center;
+  }
+  .brand{
+    display:flex; gap:12px; align-items:center; pointer-events:all;
+  }
+  .brand__logo{width:56px; height:56px; display:block}
+  .brand__title{font-weight:800; letter-spacing:.18em; text-transform:uppercase; font-size:14px}
+  .controls{display:flex; gap:12px; align-items:center; pointer-events:all}
+  .theme-toggle{
+    display:inline-flex; align-items:center; gap:10px; padding:8px 12px; border-radius:999px;
+    background:var(--panel); border:1px solid var(--stroke); cursor:pointer; user-select:none;
+    transition:transform .18s ease, background .28s ease;
+  }
+  .theme-toggle:hover{ transform:translateY(-3px) }
+
+  /* Reveal intro (hidden at top, slides down on scroll-up) */
+  .reveal-on-up{
+    position:fixed; left:0; right:0; top:0; transform:translateY(-110%); z-index:1100;
+    backdrop-filter: blur(8px) saturate(120%);
+    background: linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.12));
+    pointer-events:none;
+  }
+  .reveal-on-up .inner{ max-width:var(--maxw); margin:0 auto; padding:18px var(--pad); display:flex; justify-content:space-between; align-items:center; gap:16px }
+  .reveal-on-up .inner a{ pointer-events:all; display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:14px; background:var(--glass); border:1px solid var(--stroke) }
+
+  /* Page sections */
+  .p-section{
+    position:relative; min-height:120vh; overflow:visible; display:block; isolation:isolate; padding: calc(var(--pad)*2) 0;
+  }
+
+  .p-bg{ position:absolute; inset:-8vh -6vw -8vh -6vw; z-index:1; will-change:transform, opacity; overflow:hidden }
+  .p-bg img{ width:100%; height:100%; object-fit:cover; display:block; filter:contrast(1.02) saturate(1.05) }
+  .p-overlay{ position:absolute; inset:0; z-index:2; pointer-events:none;
+    background:
+      radial-gradient(40% 30% at 20% 20%, rgba(0,0,0,0.18), rgba(0,0,0,0) 40%),
+      linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.4));
+  }
+
+  .p-content{ position:relative; z-index:3; max-width:var(--maxw); margin:0 auto; padding: calc(var(--pad)*2) var(--pad) }
+
+  .eyebrow{ color:var(--muted); text-transform:uppercase; letter-spacing:.18em; font-size:12px; margin-bottom:12px }
+  .section-title{ font-family: "Playfair Display", "Georgia", serif; font-size: clamp(32px, 5.8vw, 68px); line-height:0.94; margin:0 0 12px; font-weight:600 }
+  .lead{ color:var(--muted); max-width:60ch; font-size:16px; margin-bottom:28px }
+
+  /* Card containers general */
+  .cards{ display:grid; gap:16px; align-items:start }
+
+  /* Card base */
+  .card{
+    position:relative; overflow:hidden; border-radius:16px; padding:18px; background:var(--card-bg);
+    border:1px solid var(--stroke); box-shadow:var(--shadow); min-height:120px;
+    transform-origin:center; will-change:transform, opacity;
+  }
+  .card__media{ position:absolute; inset:0; z-index:0; opacity:0.9; pointer-events:none }
+  .card__media img{ width:100%; height:100%; object-fit:cover; display:block; filter:contrast(1.04) }
+  .card__meta{ position:relative; z-index:2; color:var(--fg) }
+
+  /* ===== UNIQUE GRIDS FOR SECTIONS ===== */
+  /* 1 — Full Look: 1 big + 2 vertical */
+  .grid-look{ grid-template-columns: 1fr 360px; gap:18px; align-items:stretch }
+  .grid-look .hero{ grid-column:1/2; display:flex; align-items:flex-end; min-height:60vh; border-radius:20px; padding:28px }
+  .grid-look .side-grid{ grid-column:2/3; display:grid; grid-template-rows:1fr 1fr; gap:18px }
+
+  /* 2 — Accessories 4x4 */
+  .grid-accessories{ grid-template-columns: repeat(4, 1fr); gap:14px }
+  .grid-accessories .card{ min-height:110px; border-radius:10px; padding:12px }
+
+  /* 3 — Editorial split (left big, center text, right big) */
+  .grid-editorial{ grid-template-columns: 1fr 420px 1fr; gap:20px; align-items:center }
+  .grid-editorial .text-block{ background:linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02)); padding:28px; border-radius:14px; min-height:320px }
+
+  /* 4 — Product carousel overlap */
+  .grid-carousel{ display:flex; gap: -40px; justify-content:center; align-items:flex-end; margin-top:20px }
+  .grid-carousel .card{ width:320px; min-height:260px; transform-origin:center bottom; box-shadow:var(--shadow); }
+
+  /* 5 — Brand story: big center + 3 around */
+  .grid-story{ display:grid; grid-template-columns: 1fr 520px 1fr; gap:18px; align-items:start }
+  .grid-story .center{ padding:34px; min-height:420px; display:flex; flex-direction:column; justify-content:center }
+
+  /* responsive */
+  @media (max-width:1100px){
+    .grid-look{ grid-template-columns: 1fr; }
+    .grid-look .side-grid{ grid-column:auto; grid-template-rows: auto auto; }
+    .grid-editorial{ grid-template-columns: 1fr; }
+    .grid-story{ grid-template-columns: 1fr; }
+    .grid-carousel{ flex-direction:column; gap:18px; }
+    .grid-accessories{ grid-template-columns: repeat(2, 1fr) }
+    .p-section{ min-height:100vh }
+  }
+  @media (max-width:600px){
+    .grid-accessories{ grid-template-columns: 1fr }
+    .section-title{ font-size:28px }
+    .lead{ font-size:15px }
+  }
+
+  /* Footer */
+  footer{ padding: calc(var(--pad)*2) var(--pad); border-top:1px solid var(--stroke); background: linear-gradient(180deg, transparent, rgba(0,0,0,0.02)) }
+  footer .inner{ max-width:var(--maxw); margin:0 auto; display:flex; justify-content:space-between; gap:14px; align-items:center; flex-wrap:wrap }
+
+  /* Magnetic button (base) */
+  .btn{
+    display:inline-flex; align-items:center; gap:10px; padding:12px 18px; border-radius:12px; cursor:pointer;
+    border:1px solid var(--stroke); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    transition: box-shadow .18s ease, transform .12s ease;
+    position:relative; z-index:10; user-select:none;
+  }
+  .btn--primary{ background: linear-gradient(90deg, var(--accent-2), var(--gold)); color: #000; font-weight:700; border:none }
+  .btn--ghost{ background:transparent; color:var(--fg) }
+
+  /* Reduced motion / accessibility */
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none!important; animation:none!important}
+  }
+  </style>
+</head>
+<body>
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">
+        <!-- SVG LOGO with animated feTurbulence -->
+        <svg class="brand__logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="logoGrad" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98"/>
+              <stop offset="100%" stop-color="#d4d4d4" stop-opacity="0.95"/>
+            </linearGradient>
+
+            <!-- turbulence filter for organic wobble -->
+            <filter id="wobble">
+              <feTurbulence id="turb" baseFrequency="0.015 0.02" numOctaves="2" seed="3" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+          </defs>
+
+          <!-- simple monogram shape -->
+          <g filter="url(#wobble)">
+            <rect x="20" y="20" width="160" height="160" rx="32" fill="url(#logoGrad)"></rect>
+            <path d="M52 140 L92 60 L132 140 Z" fill="#000" opacity="0.06"></path>
+            <text x="100" y="122" text-anchor="middle" font-family="Montserrat" font-weight="800" font-size="54" fill="#0b0b0b" opacity="0.9" style="letter-spacing:2px">B</text>
+          </g>
+        </svg>
+
+        <div>
+          <div class="brand__title">BRANDED</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="theme-toggle" id="themeToggle" role="button" aria-label="Toggle theme">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span style="font-weight:600; font-size:13px">Theme</span>
+        </div>
+        <a class="btn btn--ghost" href="#sec-1">Shop Drop</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reveal intro -->
+  <div class="reveal-on-up" id="revealOnUp" aria-hidden="true">
+    <div class="inner">
+      <div style="display:flex;flex-direction:column;">
+        <div style="font-weight:800; font-size:18px">BRANDED — Capsule 2025</div>
+        <div style="color:var(--muted); margin-top:6px; font-size:13px">Коллекция, представленная на параллаксе</div>
+      </div>
+      <div>
+        <a class="btn btn--primary" href="#sec-1">Открыть коллекцию</a>
+      </div>
+    </div>
+  </div>
+
+  <main id="page">
+    <!-- SECTION 1: Full Look -->
+    <section class="p-section" id="sec-1" data-grid="look">
+      <div class="p-bg" data-depth="0.18"><img class="spx" src="https://images.unsplash.com/photo-1542060748-10c28b62716c?q=80&w=2400&auto=format&fit=crop" alt="Look 01"></div>
+      <div class="p-overlay"></div>
+      <div class="p-content">
+        <div class="eyebrow">Drop 01 — Full Look</div>
+        <h2 class="section-title">Город — это подиум</h2>
+        <p class="lead">Масштабные силуэты и текстуры — вот что двигает капсулу.</p>
+
+        <div class="cards grid-look">
+          <article class="card hero">
+            <div class="card__media"><img src="https://images.unsplash.com/photo-1618354691438-25bc04584e59?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta">
+              <div style="color:var(--muted); font-size:12px; margin-bottom:8px">Lookbook</div>
+              <div style="font-weight:800; font-size:20px">Hoodie & Layered Pants</div>
+              <div style="margin-top:12px"><button class="btn btn--primary magnetic">Shop look</button></div>
+            </div>
+          </article>
+
+          <div class="side-grid">
+            <article class="card">
+              <div class="card__media"><img src="https://images.unsplash.com/photo-1520975829466-0a56b35a2a64?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+              <div class="card__meta">
+                <div style="color:var(--muted); font-size:12px">Outerwear</div>
+                <div style="font-weight:700; margin-top:6px">Windbreaker «Pulse»</div>
+                <div style="margin-top:10px"><button class="btn magnetic">View</button></div>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card__media"><img src="https://images.unsplash.com/photo-1542213493895-edf5b94f5a33?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+              <div class="card__meta">
+                <div style="color:var(--muted); font-size:12px">Cap</div>
+                <div style="font-weight:700; margin-top:6px">Cap «Zero Line»</div>
+                <div style="margin-top:10px"><button class="btn magnetic">Buy</button></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: Accessories (grid 4x4) -->
+    <section class="p-section" id="sec-2" data-grid="accessories">
+      <div class="p-bg" data-depth="0.14"><img class="spx" src="https://images.unsplash.com/photo-1520975916090-3105956dac38?q=80&w=2400&auto=format&fit=crop" alt="Accessories"></div>
+      <div class="p-overlay"></div>
+      <div class="p-content">
+        <div class="eyebrow">Drop 02 — Accessories</div>
+        <h2 class="section-title">Мелкие детали — большая история</h2>
+        <p class="lead">Сумки, пояса, кепки и аксессуары, которые формируют повседневную эстетику.</p>
+
+        <div class="cards grid-accessories">
+          <!-- 8 demo items (will appear in a wave) -->
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1530018607912-eff2daa1bac6?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:700">Belt «Linework»</div></div></article>
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1542359649-31e03cd4d909?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:700">Bag «Ray»</div></div></article>
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1544441892-76bc3997d09a?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:700">Cap «Zero»</div></div></article>
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1514326640560-7d063ef2aed5?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:700">Pouch «Grid»</div></div></article>
+
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:700">Gloves «Arc»</div></div></article>
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1543087903-1ac2ec7aa8c5?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:700">Sunglasses «Line»</div></div></article>
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1542272604-787c3835535d?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:700">Keychain «Mini»</div></div></article>
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1520975680668-5633e391788f?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:700">Patch «ID»</div></div></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: Editorial split -->
+    <section class="p-section" id="sec-3" data-grid="editorial">
+      <div class="p-bg" data-depth="0.2"><img class="spx" src="https://images.unsplash.com/photo-1516570161787-2fd917215a3d?q=80&w=2400&auto=format&fit=crop" alt="Editorial"></div>
+      <div class="p-overlay"></div>
+      <div class="p-content">
+        <div class="eyebrow">Drop 03 — Editorial</div>
+        <h2 class="section-title">Текстура и настроение</h2>
+        <p class="lead">Фотографии в полный рост сочетаются с короткой историей коллекции.</p>
+
+        <div class="cards grid-editorial">
+          <article class="card" style="min-height:420px">
+            <div class="card__media"><img src="https://images.unsplash.com/photo-1544441892-76bc3997d09a?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+          </article>
+
+          <article class="card text-block">
+            <div style="position:relative; z-index:2">
+              <div style="color:var(--muted); font-size:12px; margin-bottom:8px">Editorial</div>
+              <div style="font-weight:800; font-size:24px; margin-bottom:12px">We build clothes like we build cities</div>
+              <p style="color:var(--muted)">Layering, proportion and a minimal color palette — these are the chords we play. The clothes breathe with movement.</p>
+              <div style="margin-top:18px"><button class="btn btn--primary magnetic">Read story</button></div>
+            </div>
+          </article>
+
+          <article class="card" style="min-height:420px">
+            <div class="card__media"><img src="https://images.unsplash.com/photo-1536697246787-1f7ae568d1b4?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: Product carousel (3 overlap cards) -->
+    <section class="p-section" id="sec-4" data-grid="carousel">
+      <div class="p-bg" data-depth="0.16"><img class="spx" src="https://images.unsplash.com/photo-1542060748-10c28b62716c?q=80&w=2400&auto=format&fit=crop" alt="Carousel"></div>
+      <div class="p-overlay"></div>
+      <div class="p-content">
+        <div class="eyebrow">Drop 04 — Product Carousel</div>
+        <h2 class="section-title">Изделия с overlap-эффектом</h2>
+        <p class="lead">Три продукта, которые можно носить вместе или по отдельности.</p>
+
+        <div class="grid-carousel">
+          <article class="card" style="transform: translateY(30px) rotate(-2deg)"><div class="card__media"><img src="https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:800">Anorak «Vector»</div></div></article>
+
+          <article class="card" style="transform: translateY(-6px) scale(1.04)"><div class="card__media"><img src="https://images.unsplash.com/photo-1543087903-1ac2ec7aa8c5?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:800">Shell «Vapor»</div></div></article>
+
+          <article class="card" style="transform: translateY(28px) rotate(2deg)"><div class="card__media"><img src="https://images.unsplash.com/photo-1542272604-787c3835535d?q=80&w=1600&auto=format&fit=crop" alt=""></div>
+            <div class="card__meta"><div style="font-weight:800">Pack «Grid-Arc»</div></div></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: Brand story -->
+    <section class="p-section" id="sec-5" data-grid="story">
+      <div class="p-bg" data-depth="0.22"><img class="spx" src="https://images.unsplash.com/photo-1520975480735-4a4b89f687ec?q=80&w=2400&auto=format&fit=crop" alt="Brand Story"></div>
+      <div class="p-overlay"></div>
+      <div class="p-content">
+        <div class="eyebrow">Drop 05 — Brand Story</div>
+        <h2 class="section-title">Форма важнее знака</h2>
+        <p class="lead">Капсула — это визуальный диалог между функциональностью и стилем.</p>
+
+        <div class="cards grid-story">
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1542359649-31e03cd4d909?q=80&w=1600&auto=format&fit=crop" alt=""></div></article>
+
+          <article class="card center">
+            <div style="position:relative; z-index:2">
+              <div style="font-weight:700; font-size:22px; margin-bottom:8px">BRANDED — Capsule 2025</div>
+              <p style="color:var(--muted)">Мы конструируем вещи, которые живут в движении города — и выдерживают время. Линия, посадка, и внимательная работа с материалами.</p>
+              <div style="margin-top:16px"><button class="btn btn--primary magnetic">Explore brand</button></div>
+            </div>
+          </article>
+
+          <article class="card"><div class="card__media"><img src="https://images.unsplash.com/photo-1520975618311-66f31d3a5c03?q=80&w=1600&auto=format&fit=crop" alt=""></div></article>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="inner">
+        <div>© 2025 BRANDED — Capsule</div>
+        <div style="display:flex; gap:12px">
+          <a class="btn btn--ghost" href="#">Instagram</a>
+          <a class="btn btn--ghost" href="#">TikTok</a>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- LIBRARIES -->
+  <script src="https://unpkg.com/lenis@1.1.16/dist/lenis.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/simple-parallax-js@5.6.2/dist/simpleParallax.min.js"></script>
+
+  <script>
+  // =========================
+  // Initialization
+  // =========================
+  gsap.registerPlugin(ScrollTrigger);
+
+  // Lenis smooth scroll
+  const lenis = new Lenis({ duration:1.1, easing: (t) => 1 - Math.pow(1 - t, 3), smoothWheel:true, smoothTouch:false });
+  function raf(t){ lenis.raf(t); requestAnimationFrame(raf) }
+  requestAnimationFrame(raf);
+  lenis.on('scroll', () => ScrollTrigger.update());
+
+  // SimpleParallax for background images
+  document.querySelectorAll('.spx').forEach(img => {
+    // eslint-disable-next-line no-unused-vars
+    new simpleParallax(img, { scale:1.12, delay:0.12, transition: 'cubic-bezier(.22,.8,.34,1)'});
+  });
+
+  // Reveal intro on scroll-up
+  const reveal = document.getElementById('revealOnUp');
+  let introOpen = false;
+  ScrollTrigger.create({
+    start: 0,
+    end: 999999,
+    onUpdate(self){
+      // direction -1 = up, 1 = down
+      if(self.direction === -1 && !introOpen){
+        introOpen = true;
+        gsap.to(reveal, { yPercent: 0, duration: 0.65, ease: "power3.out", pointerEvents:'auto' });
+      } else if(self.direction === 1 && introOpen){
+        introOpen = false;
+        gsap.to(reveal, { yPercent: -110, duration: 0.45, ease: "power3.in", pointerEvents:'none' });
+      }
+    }
+  });
+
+  // Theme toggle
+  const themeToggle = document.getElementById('themeToggle');
+  themeToggle.addEventListener('click', ()=>{
+    const html = document.documentElement;
+    const cur = html.getAttribute('data-theme') || 'dark';
+    const nxt = cur === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', nxt);
+    // animation: small pulse
+    gsap.fromTo(themeToggle, {scale:0.95}, {scale:1, duration:0.28, ease:"elastic.out(1,0.6)"});
+  });
+
+  // -------------------------
+  // Logo "wobble" via feTurbulence animation
+  // -------------------------
+  const turb = document.getElementById('turb');
+  if(turb){
+    // animate baseFrequency to produce living feel
+    gsap.to(turb, {
+      attr: { baseFrequency: "0.009 0.012" },
+      duration: 2.4,
+      ease: "sine.inOut",
+      yoyo: true,
+      repeat: -1
+    });
+    gsap.to(turb, {
+      attr: { baseFrequency: "0.02 0.018" },
+      duration: 3.6,
+      ease: "sine.inOut",
+      yoyo: true,
+      repeat: -1,
+      delay: 0.4
+    });
+    // occasionally jitter seed (subtle)
+    setInterval(()=> {
+      try { turb.setAttribute('seed', (3 + Math.floor(Math.random()*6)).toString()); } catch(e){}
+    }, 4200);
+  }
+
+  // =========================
+  // Magnetic Buttons
+  // =========================
+  function makeMagnetic(el, options = {}) {
+    const strength = options.strength ?? 28;
+    const s = el.getBoundingClientRect();
+    let bounds = s;
+    const onMove = (e) => {
+      const pointerX = (e.touches ? e.touches[0].clientX : e.clientX);
+      const pointerY = (e.touches ? e.touches[0].clientY : e.clientY);
+      const cx = bounds.left + bounds.width/2;
+      const cy = bounds.top + bounds.height/2;
+      const dx = pointerX - cx;
+      const dy = pointerY - cy;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const maxDist = Math.max(bounds.width, bounds.height) * 1.2;
+      const force = Math.max(0, 1 - (dist / maxDist));
+      const tx = (dx / bounds.width) * strength * force;
+      const ty = (dy / bounds.height) * (strength*0.6) * force;
+      gsap.to(el, { x: tx, y: ty, scale: 1 + 0.06*force, duration: 0.28, ease: "expo.out" });
+    };
+    const onLeave = () => gsap.to(el, { x:0, y:0, scale:1, duration:0.5, ease:"elastic.out(1,0.4)" });
+
+    const attach = () => {
+      bounds = el.getBoundingClientRect();
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('touchmove', onMove, {passive:true});
+      el.addEventListener('mouseleave', onLeave);
+      el.addEventListener('touchend', onLeave);
+    };
+    const detach = ()=>{
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('touchmove', onMove);
+      el.removeEventListener('mouseleave', onLeave);
+      el.removeEventListener('touchend', onLeave);
+    };
+
+    attach();
+    // refresh bounds on resize
+    window.addEventListener('resize', ()=> bounds = el.getBoundingClientRect());
+    return { attach, detach };
+  }
+
+  document.querySelectorAll('.magnetic').forEach(el => makeMagnetic(el));
+
+  // =========================
+  // Build Parallax Section Timelines
+  // Each section: slow bg in -> pin -> stagger cards in -> pause -> stagger out -> unpin
+  // Unique stagger patterns depending on data-grid attribute
+  // =========================
+  const isReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function buildSection(sec){
+    const bg = sec.querySelector('.p-bg');
+    const cardsContainer = sec.querySelector('.cards');
+    const cards = cardsContainer ? Array.from(cardsContainer.querySelectorAll('.card')) : [];
+    const title = sec.querySelector('.section-title');
+    const lead = sec.querySelector('.lead');
+
+    // initial states
+    if(bg) gsap.set(bg, { yPercent: 16, scale:1.08, opacity:0.95 });
+    if(title) gsap.set(title, { y: 40, opacity:0 });
+    if(lead) gsap.set(lead, { y: 24, opacity:0 });
+    if(cards.length) gsap.set(cards, { y: 60, opacity:0, rotateX: -6, transformOrigin:"50% 100%" });
+
+    // determine stagger pattern
+    const gridType = sec.dataset.grid || 'default';
+    let staggerCfg = { each:0.06, from:"start" };
+    if(gridType === 'accessories') staggerCfg = { each:0.05, from:"center" };
+    if(gridType === 'editorial') staggerCfg = { each:0.08, from:"edges" };
+    if(gridType === 'carousel') staggerCfg = { each:0.06, from:"center", axis:"x" };
+    if(gridType === 'story') staggerCfg = { each:0.06, from:"center" };
+    if(gridType === 'look') staggerCfg = { each:0.065, from:"edges" };
+
+    // shorten on mobile or reduced motion
+    const multiplier = (window.innerWidth < 900 || isReduced) ? 1.0 : 2.2;
+    const total = window.innerHeight * multiplier;
+
+    const tl = gsap.timeline({
+      defaults:{ease:"power2.out"},
+      scrollTrigger: {
+        trigger: sec,
+        start: "top top",
+        end: () => "+=" + total,
+        scrub: true,
+        pin: true,
+        anticipatePin:1
+      }
+    });
+
+    // stage 1: bg in & title
+    tl.to(bg, { yPercent: 0, scale:1, opacity:1, duration:0.28 }, 0);
+    tl.to(title, { y:0, opacity:1, duration:0.22 }, 0.06);
+    tl.to(lead, { y:0, opacity:1, duration:0.22 }, 0.12);
+
+    // small hold
+    tl.addLabel("hold", 0.28);
+    tl.to({}, { duration: 0.18 });
+
+    // cards in
+    if(cards.length){
+      tl.to(cards, { y:0, opacity:1, rotateX:0, stagger: staggerCfg, duration:0.28 }, 0.46);
+      // pause
+      tl.addLabel("pause", 0.74);
+      tl.to({}, { duration:0.12 });
+      // quick out
+      tl.to(cards, {
+        y: -140,
+        opacity:0,
+        rotateX: 8,
+        stagger: { each: (staggerCfg.each/2), from:staggerCfg.from },
+        duration:0.12
+      }, 0.84);
+    } else {
+      // if no cards, small additional motion
+      tl.to(bg, { scale:1.02, duration:0.3 }, 0.4);
+    }
+
+    // final: bg exit
+    tl.to(bg, { yPercent: -18, opacity:0.66, duration:0.12, ease:"power1.inOut" }, 0.96);
+  }
+
+  // build for all p-sections
+  document.querySelectorAll('.p-section').forEach((sec)=> buildSection(sec));
+
+  // small depth effect for background elements across scroll
+  document.querySelectorAll('.p-bg').forEach((el)=>{
+    const depth = parseFloat(el.dataset.depth || 0.14);
+    gsap.to(el, {
+      yPercent: -depth * 90,
+      ease: "none",
+      scrollTrigger: {
+        trigger: el.closest('.p-section'),
+        start: "top bottom",
+        end: "bottom top",
+        scrub: true
+      }
+    });
+  });
+
+  // responsive refresh
+  let rtime;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(rtime);
+    rtime = setTimeout(()=> ScrollTrigger.refresh(), 220);
+  });
+
+  // Smooth scroll for internal anchors via Lenis
+  document.querySelectorAll('a[href^="#"]').forEach(a=>{
+    a.addEventListener('click', (ev)=>{
+      const href = a.getAttribute('href');
+      if(!href || href === '#') return;
+      const targ = document.querySelector(href);
+      if(!targ) return;
+      ev.preventDefault();
+      lenis.scrollTo(targ, { offset: -6 });
+    });
+  });
+
+  // Helpful: reduce heavy animations on small devices
+  if(window.innerWidth < 560){
+    // remove feTurbulence large effects
+    try{ turb.setAttribute('baseFrequency', '0.012 0.012'); } catch(e){}
+  }
+
+  // End
+  </script>
+</body>
+</html>
